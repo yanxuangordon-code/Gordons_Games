@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gordon's Games | Bright Edition</title>
+    <style>
+        :root {
+            --neon-blue: #00e0ff;
+            --neon-cyan: #00ffff;
+            --neon-teal: #00ffdd;
+            --bg-start: #0a1a3a;
+            --bg-end: #1a3a6a;
+            --card-bg: rgba(15, 35, 65, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: auto; }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* ===================== PASSWORD GATE ===================== */
+        #password-gate {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #password-gate::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 224, 255, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 224, 255, 0.08) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gateGridMove 4s linear infinite;
+        }
+
+        @keyframes gateGridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+
+        #password-gate::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .gate-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 520px;
+            padding: 20px;
+        }
+
+        .gate-skull { font-size: 3em; animation: skullPulse 2s ease-in-out infinite; filter: drop-shadow(0 0 15px #00e0ff); }
+
+        @keyframes skullPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px #00e0ff); }
+            50% { transform: scale(1.08); filter: drop-shadow(0 0 25px #00ffff); }
+        }
+
+        .gate-title { font-size: 2em; color: #00e0ff; letter-spacing: 8px; text-align: center; text-shadow: 0 0 20px #00e0ff, 0 0 40px #00a0ff; animation: titleFlicker 4s infinite alternate; }
+
+        @keyframes titleFlicker {
+            0%, 90%, 100% { opacity: 1; }
+            92% { opacity: 0.4; }
+            95% { opacity: 1; }
+            97% { opacity: 0.3; }
+        }
+
+        .gate-subtitle { color: rgba(0, 224, 255, 0.5); font-size: 0.75em; letter-spacing: 4px; text-align: center; }
+
+        .gate-terminal {
+            width: 100%;
+            background: rgba(0, 20, 40, 0.9);
+            border: 1px solid rgba(0, 224, 255, 0.3);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 0 30px rgba(0, 224, 255, 0.15), inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .terminal-line { color: rgba(0, 224, 255, 0.6); font-size: 0.75em; margin-bottom: 6px; letter-spacing: 2px; }
+        .terminal-line.bright { color: #00e0ff; }
+
+        .gate-input-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-top: 14px; border-top: 1px solid rgba(0, 224, 255, 0.15); padding-top: 14px;
+        }
+
+        .gate-prompt { color: #00e0ff; font-size: 1em; white-space: nowrap; text-shadow: 0 0 8px #00e0ff; }
+
+        #gate-input {
+            background: transparent; border: none; outline: none;
+            color: #00ffff; font-family: 'Courier New', monospace;
+            font-size: 1em; flex: 1; letter-spacing: 4px;
+            text-shadow: 0 0 8px #00ffff; caret-color: #00e0ff;
+        }
+
+        #gate-input::placeholder { color: rgba(0, 224, 255, 0.2); letter-spacing: 2px; font-size: 0.85em; }
+
+        .gate-enter-btn {
+            background: transparent; border: 1px solid rgba(0, 224, 255, 0.5);
+            color: #00e0ff; font-family: 'Courier New', monospace;
+            font-size: 0.75em; letter-spacing: 2px;
+            padding: 6px 14px; border-radius: 3px; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap;
+        }
+
+        .gate-enter-btn:hover { background: rgba(0, 224, 255, 0.15); box-shadow: 0 0 12px rgba(0, 224, 255, 0.4); }
+
+        #access-denied { color: #ff2244; font-size: 0.85em; letter-spacing: 4px; text-align: center; text-shadow: 0 0 10px #ff2244; height: 22px; opacity: 0; transition: opacity 0.2s; }
+        #access-denied.show { opacity: 1; }
+        .gate-shake { animation: gateShake 0.4s cubic-bezier(.36,.07,.19,.97) both !important; }
+
+        @keyframes gateShake {
+            10%, 90% { transform: translateX(-4px); }
+            20%, 80% { transform: translateX(6px); }
+            30%, 50%, 70% { transform: translateX(-6px); }
+            40%, 60% { transform: translateX(6px); }
+        }
+
+        .gate-glitch { animation: gateGlitchAnim 0.4s steps(1) both !important; }
+
+        @keyframes gateGlitchAnim {
+            0% { filter: none; }
+            20% { filter: hue-rotate(90deg) brightness(2); clip-path: inset(10% 0 80% 0); }
+            40% { filter: hue-rotate(180deg) brightness(0.5); clip-path: inset(60% 0 10% 0); }
+            60% { filter: hue-rotate(270deg) brightness(2); clip-path: inset(30% 0 50% 0); }
+            80% { filter: hue-rotate(360deg); clip-path: none; }
+            100% { filter: none; clip-path: none; }
+        }
+
+        .gate-unlock { animation: gateUnlock 1s ease forwards !important; }
+
+        @keyframes gateUnlock {
+            0% { opacity: 1; filter: none; }
+            30% { filter: brightness(3) saturate(2); }
+            60% { filter: brightness(5) hue-rotate(90deg); transform: scale(1.02); }
+            100% { opacity: 0; transform: scale(1.05); filter: brightness(10); }
+        }
+
+        .gate-granted-msg { color: #00ff88; font-size: 1.1em; letter-spacing: 6px; text-align: center; text-shadow: 0 0 20px #00ff88; opacity: 0; transition: opacity 0.3s; height: 30px; }
+        .gate-granted-msg.show { opacity: 1; }
+        .gate-hint { color: rgba(0, 224, 255, 0.25); font-size: 0.65em; letter-spacing: 3px; text-align: center; margin-top: 6px; }
+
+        /* ===================== IFRAME OVERLAY ===================== */
+        #iframe-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 8888;
+            display: none;
+            flex-direction: column;
+            background: #000;
+        }
+
+        #iframe-overlay.active { display: flex; }
+
+        .iframe-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 10, 25, 0.98);
+            border-bottom: 1px solid rgba(0, 224, 255, 0.3);
+            padding: 10px 20px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .iframe-topbar-title {
+            color: #00e0ff;
+            font-size: 0.85em;
+            letter-spacing: 3px;
+            text-shadow: 0 0 8px #00e0ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .iframe-close-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 50, 80, 0.6);
+            color: #ff3250;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            letter-spacing: 2px;
+            padding: 6px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .iframe-close-btn:hover {
+            background: rgba(255, 50, 80, 0.2);
+            box-shadow: 0 0 12px rgba(255, 50, 80, 0.5);
+        }
+
+        #game-frame {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: #000;
+        }
+
+        .iframe-blocked-msg {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            color: #00e0ff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .iframe-blocked-msg.show { display: flex; }
+        .iframe-blocked-msg h2 { font-size: 1.5em; letter-spacing: 4px; text-shadow: 0 0 15px #00e0ff; }
+        .iframe-blocked-msg p { color: rgba(0,224,255,0.5); font-size: 0.8em; letter-spacing: 2px; line-height: 1.8; }
+
+        /* ===================== BACKGROUND LAYERS ===================== */
+        .nebula { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 15% 50%, rgba(0, 80, 200, 0.5), transparent 30%), radial-gradient(circle at 85% 30%, rgba(0, 150, 220, 0.4), transparent 30%); filter: blur(60px); z-index: 0; animation: nebulaMove 20s ease-in-out infinite alternate; }
+        @keyframes nebulaMove { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.3); opacity: 1; } }
+
+        .vortex-grid { position: fixed; top: 50%; left: 50%; width: 200vw; height: 200vh; transform: translate(-50%, -50%) perspective(500px) rotateX(60deg); background-image: linear-gradient(rgba(0, 224, 255, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 224, 255, 0.5) 1px, transparent 1px); background-size: 60px 60px; mask-image: radial-gradient(circle, black 10%, transparent 70%); -webkit-mask-image: radial-gradient(circle, black 10%, transparent 70%); z-index: 1; animation: vortexMove 5s linear infinite; pointer-events: none; }
+        @keyframes vortexMove { 0% { transform: translate(-50%, -50%) perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: translate(-50%, -50%) perspective(500px) rotateX(60deg) translateY(60px); } }
+
+        .geo-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
+        .shape { position: absolute; border: 2px solid rgba(0, 224, 255, 0.7); animation: floatShape 20s infinite linear; box-shadow: 0 0 12px rgba(0, 224, 255, 0.6); }
+        .shape.square { width: 100px; height: 100px; }
+        .shape.triangle { width: 0; height: 0; border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 100px solid rgba(0, 180, 220, 0.4); background: transparent; border-top: none; filter: drop-shadow(0 0 8px rgba(0, 180, 220, 0.6)); }
+        .shape.circle { width: 80px; height: 80px; border-radius: 50%; border-color: rgba(0, 220, 190, 0.7); box-shadow: 0 0 12px rgba(0, 220, 190, 0.6); }
+        @keyframes floatShape { 0% { transform: translateY(110vh) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; } }
+
+        .chromatic-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; background: linear-gradient(45deg, rgba(0,255,255,0.04) 0%, transparent 50%, rgba(0,150,255,0.04) 100%); mix-blend-mode: screen; animation: chromaticShift 5s infinite alternate; }
+        @keyframes chromaticShift { 0% { transform: translateX(-2px); } 100% { transform: translateX(2px); } }
+
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        .star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: twinkle 3s infinite; box-shadow: 0 0 8px #fff; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.6); } }
+
+        .particle { position: fixed; width: 3px; height: 3px; background: rgba(0, 224, 255, 0.9); border-radius: 50%; pointer-events: none; animation: float 15s infinite; box-shadow: 0 0 15px rgba(0, 224, 255, 0.8); z-index: 6; }
+        @keyframes float { 0% { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-100vh) translateX(100px) scale(1); opacity: 0; } }
+
+        .data-rain { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; overflow: hidden; opacity: 0.5; }
+        .data-char { position: absolute; color: #00e0ff; font-size: 14px; font-weight: bold; animation: fall linear infinite; text-shadow: 0 0 8px #00e0ff; }
+        @keyframes fall { 0% { transform: translateY(-100px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(110vh); opacity: 0; } }
+
+        .scanline { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 50%, rgba(0, 224, 255, 0.04) 50%); background-size: 100% 4px; pointer-events: none; z-index: 998; animation: scan 8s linear infinite; }
+        .scanline-vertical { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, transparent 50%, rgba(0, 224, 255, 0.04) 50%); background-size: 4px 100%; pointer-events: none; z-index: 997; animation: scanVert 10s linear infinite; }
+        @keyframes scan { 0% { transform: translateY(0); } 100% { transform: translateY(100%); } }
+        @keyframes scanVert { 0% { transform: translateX(0); } 100% { transform: translateX(100%); } }
+
+        .vignette { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, transparent 35%, #051020 100%); pointer-events: none; z-index: 999; opacity: 0.3; animation: vignettePulse 4s ease-in-out infinite alternate; }
+        @keyframes vignettePulse { 0% { opacity: 0.2; } 100% { opacity: 0.4; } }
+
+        .glitch-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; background: transparent; mix-blend-mode: exclusion; opacity: 0; }
+        .glitch-active { animation: globalGlitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+        @keyframes globalGlitch { 0% { transform: translate(0); filter: hue-rotate(0deg); } 20% { transform: translate(-5px, 5px); filter: hue-rotate(90deg); } 40% { transform: translate(-5px, -5px); filter: hue-rotate(180deg); } 60% { transform: translate(5px, 5px); filter: hue-rotate(270deg); } 80% { transform: translate(5px, -5px); filter: hue-rotate(360deg); } 100% { transform: translate(0); filter: hue-rotate(0deg); } }
+
+        /* ===================== MAIN CONTENT ===================== */
+        .container { max-width: 1400px; width: 100%; position: relative; z-index: 10; }
+
+        h1 { text-align: center; color: #fff; font-size: 3.5em; margin-bottom: 40px; text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue), 0 0 30px var(--neon-blue), 0 0 40px #00a0ff; animation: flicker 3s infinite alternate; letter-spacing: 5px; position: relative; display: inline-block; left: 50%; transform: translateX(-50%); }
+        @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } 75% { opacity: 0.9; } }
+
+        .games-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; padding: 20px; perspective: 1000px; }
+
+        .game-card { background: var(--card-bg); border: 3px solid rgba(0, 224, 255, 0.7); border-radius: 15px; padding: 30px; box-shadow: 0 0 25px rgba(0, 224, 255, 0.4), inset 0 0 20px rgba(0, 224, 255, 0.08); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; position: relative; overflow: hidden; opacity: 0; animation: fadeInUp 0.8s ease forwards, floatCard 6s ease-in-out infinite; backdrop-filter: blur(10px); transform-style: preserve-3d; }
+
+        .game-card:nth-child(1) { animation-delay: 0s, 0s; }
+        .game-card:nth-child(2) { animation-delay: 0.1s, 1s; }
+        .game-card:nth-child(3) { animation-delay: 0.2s, 2s; }
+        .game-card:nth-child(4) { animation-delay: 0.3s, 3s; }
+        .game-card:nth-child(5) { animation-delay: 0.4s, 4s; }
+        .game-card:nth-child(6) { animation-delay: 0.5s, 5s; }
+        .game-card:nth-child(7) { animation-delay: 0.6s, 0.5s; }
+        .game-card:nth-child(8) { animation-delay: 0.7s, 1.5s; }
+        .game-card:nth-child(9) { animation-delay: 0.8s, 2s; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes floatCard { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .game-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), rgba(0,224,255,0.4), rgba(255,255,255,0.3), transparent); transition: 0.5s; transform: skewX(-25deg); z-index: 1; pointer-events: none; }
+        .game-card:hover::before { left: 100%; transition: 0.7s; }
+        .game-card::after { content: ''; position: absolute; inset: -3px; background: linear-gradient(45deg, var(--neon-blue), var(--neon-cyan), var(--neon-teal), var(--neon-blue)); z-index: -1; border-radius: 16px; background-size: 400%; opacity: 0; transition: opacity 0.4s; animation: gradientShift 3s linear infinite; filter: blur(12px); }
+        .game-card:hover::after { opacity: 1; }
+        .game-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 0 40px rgba(0,224,255,0.6), 0 0 80px rgba(0,180,220,0.5); border-color: rgba(0,224,255,0.9); animation-play-state: paused; background: rgba(20,45,75,0.7); }
+
+        .game-title { font-size: 1.8em; color: #fff; margin-bottom: 20px; font-weight: bold; text-shadow: 0 0 12px var(--neon-blue); letter-spacing: 2px; position: relative; display: inline-block; transition: color 0.3s, text-shadow 0.3s; }
+        .game-card:hover .game-title { color: #fff; text-shadow: 0 0 12px #fff, 0 0 25px var(--neon-blue), 0 0 35px var(--neon-blue); }
+
+        .game-description { color: #e5e5e5; line-height: 1.6; margin-bottom: 30px; flex-grow: 1; text-shadow: 0 0 4px rgba(220,220,220,0.4); transition: color 0.3s; }
+        .game-card:hover .game-description { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.7); }
+
+        .play-button { background: transparent; color: #fff; border: 2px solid rgba(0,224,255,0.7); padding: 15px 30px; font-size: 1.1em; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; text-align: center; font-weight: bold; font-family: 'Courier New', monospace; position: relative; overflow: hidden; text-shadow: 0 0 5px var(--neon-blue); display: inline-block; align-self: flex-start; z-index: 2; }
+        .play-button::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(0,224,255,0.35); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; }
+        .play-button:hover::before { width: 300px; height: 300px; }
+        .play-button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 25px var(--neon-blue); text-shadow: none; border-color: var(--neon-blue); }
+        .play-button span { position: relative; z-index: 1; }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2em; letter-spacing: 3px; margin-bottom: 30px; }
+            .games-grid { grid-template-columns: 1fr; gap: 30px; }
+            body { padding: 30px 15px; }
+            .game-card { padding: 25px; }
+            .gate-title { font-size: 1.4em; letter-spacing: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ PASSWORD GATE ============ -->
+    <div id="password-gate">
+        <div class="gate-content">
+            <div class="gate-skull">💀</div>
+            <div class="gate-title">ACCESS RESTRICTED</div>
+            <div class="gate-subtitle">[ GORDON'S MAINFRAME v2.0 ]</div>
+            <div class="gate-terminal" id="gate-terminal">
+                <div class="terminal-line">SYSTEM: INITIALISING SECURITY PROTOCOL...</div>
+                <div class="terminal-line bright">STATUS: AUTHENTICATION REQUIRED</div>
+                <div class="terminal-line">CLEARANCE LEVEL: CLASSIFIED</div>
+                <div class="gate-input-row">
+                    <span class="gate-prompt">ROOT@GORDON:~$</span>
+                    <input type="password" id="gate-input" autocomplete="off" spellcheck="false" placeholder="ENTER ACCESS CODE" maxlength="20" />
+                    <button class="gate-enter-btn" id="gate-enter-btn">ENTER ↵</button>
+                </div>
+            </div>
+            <div id="access-denied">⛔ ACCESS DENIED — INVALID CODE</div>
+            <div id="access-granted" class="gate-granted-msg">✅ ACCESS GRANTED — WELCOME BACK</div>
+            <div class="gate-hint">hint: you know the code</div>
+        </div>
+    </div>
+
+    <!-- ============ IFRAME OVERLAY ============ -->
+    <div id="iframe-overlay">
+        <div class="iframe-topbar">
+            <span class="iframe-topbar-title" id="iframe-title">LOADING GAME...</span>
+            <button class="iframe-close-btn" id="iframe-close-btn">✕ CLOSE GAME</button>
+        </div>
+        <iframe id="game-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups" allowfullscreen></iframe>
+        <div class="iframe-blocked-msg" id="iframe-blocked-msg">
+            <h2>⚠ BLOCKED BY BROWSER</h2>
+            <p>This game cannot be loaded inside the hub.<br>This sometimes happens with certain sites.<br><br>Ask Gordon for direct access.</p>
+        </div>
+    </div>
+
+    <!-- ============ BACKGROUND LAYERS ============ -->
+    <div class="nebula"></div>
+    <div class="vortex-grid"></div>
+    <div class="geo-shapes" id="geoShapes"></div>
+    <div class="chromatic-overlay"></div>
+    <div class="stars" id="stars"></div>
+    <div class="data-rain" id="dataRain"></div>
+    <div class="scanline"></div>
+    <div class="scanline-vertical"></div>
+    <div class="vignette"></div>
+    <div class="glitch-overlay" id="glitchOverlay"></div>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <div class="container">
+        <h1 data-value="🎮 GORDON'S GAMES 🎮">🎮 GORDON'S GAMES 🎮</h1>
+        <div class="games-grid">
+
+            <!-- URLs are stored in data attributes, NOT as href links -->
+            <div class="game-card">
+                <div class="game-title" data-value="MASKED FORCE">MASKED FORCE</div>
+                <div class="game-description">Step into the arena as a masked warrior. Fast-paced action, intense combat, and slick movement mechanics await. Dodge, strike, and dominate in this adrenaline-fueled battle experience.</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/Masked_Force/" data-game-title="MASKED FORCE"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="HONOUR OF KINGS">HONOUR OF KINGS</div>
+                <div class="game-description">Enter the legendary 5v5 MOBA battlefield! Choose your hero, master unique abilities, and team up to destroy the enemy base. Epic team fights, strategic gameplay, and legendary glory await!</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/Honour_Of_Kings/" data-game-title="HONOUR OF KINGS"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="SANS FIGHT">SANS FIGHT</div>
+                <div class="game-description">Face off against one of gaming's most iconic characters. Dodge intricate attack patterns, time your moves perfectly, and survive the legendary Sans encounter in this intense boss battle.</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/Sans_Fight/" data-game-title="SANS FIGHT"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="TANK CLASH">TANK CLASH</div>
+                <div class="game-description">Command your tank in explosive arena battles! Navigate the battlefield, aim with precision, and destroy enemy tanks. Upgrade your armor and firepower to dominate the clash zone.</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/Tank_Clash/" data-game-title="TANK CLASH"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="GORDON'S SMART BRAIN">GORDON'S<br>SMART BRAIN</div>
+                <div class="game-description">Your ultimate AI assistant—generate images, search the web, analyze data, write & debug code, summarize documents, translate languages, and more. Built for Gordon.</div>
+                <button class="play-button" data-game-url="https://gordons-brain.onrender.com/" data-game-title="GORDON'S SMART BRAIN"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="FLAPPY WHOPPER">FLAPPY WHOPPER</div>
+                <div class="game-description">Help the Whopper navigate through the pipes! Press SPACE or CLICK to flap. Avoid pipes and don't hit the ground. Each pipe passed = 1 point. The game gets faster as you score more!</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/flappy_whopper/" data-game-title="FLAPPY WHOPPER"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="SUPER MARIO">SUPER MARIO</div>
+                <div class="game-description">Jump, run, and stomp through classic platforming levels! Move with Arrow Keys or WASD, jump with Space/W/↑, fire with K (configurable), and restart with R. A nostalgic tribute to Mario's greatest adventures.</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/Super_Mario/" data-game-title="SUPER MARIO"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="TOWER DEFENCE">TOWER DEFENCE</div>
+                <div class="game-description">Strategically place towers and defend your base against waves of relentless enemies. Upgrade your defenses and adapt your strategy as the challenge intensifies in this tactical tower defense experience.</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/Tower_Defence-V1/" data-game-title="TOWER DEFENCE"><span>PLAY NOW</span></button>
+            </div>
+
+            <div class="game-card">
+                <div class="game-title" data-value="SECRET">SECRET</div>
+                <div class="game-description">Enter the shadows and uncover what lies beyond the veil. This cryptic experience challenges perception and defies explanation. Only the brave will discover its true nature.</div>
+                <button class="play-button" data-game-url="https://yanxuangordon-code.github.io/secret/" data-game-title="SECRET"><span>PLAY NOW</span></button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ============ PASSWORD GATE ============
+        const SECRET_CODE = "G0RD0N"; // Change this to your secret code!
+
+        const gate = document.getElementById('password-gate');
+        const gateInput = document.getElementById('gate-input');
+        const gateEnterBtn = document.getElementById('gate-enter-btn');
+        const accessDenied = document.getElementById('access-denied');
+        const accessGranted = document.getElementById('access-granted');
+        const gateTerminal = document.getElementById('gate-terminal');
+
+        let deniedActive = false, deniedTimeout;
+
+        function tryPassword() {
+            const val = gateInput.value.toUpperCase().trim();
+            if (val === SECRET_CODE) {
+                accessDenied.classList.remove('show');
+                accessGranted.classList.add('show');
+                gateInput.disabled = true;
+                gateEnterBtn.disabled = true;
+                setTimeout(() => {
+                    gate.classList.add('gate-unlock');
+                    setTimeout(() => { gate.style.display = 'none'; }, 900);
+                }, 600);
+            } else {
+                if (deniedActive) return;
+                deniedActive = true;
+                accessDenied.classList.add('show');
+                gateTerminal.classList.add('gate-shake');
+                gate.classList.add('gate-glitch');
+                gateInput.value = '';
+                clearTimeout(deniedTimeout);
+                deniedTimeout = setTimeout(() => {
+                    accessDenied.classList.remove('show');
+                    gateTerminal.classList.remove('gate-shake');
+                    gate.classList.remove('gate-glitch');
+                    deniedActive = false;
+                }, 1200);
+            }
+        }
+
+        gateEnterBtn.addEventListener('click', tryPassword);
+        gateInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryPassword(); });
+        window.addEventListener('load', () => { setTimeout(() => gateInput.focus(), 200); });
+
+        // ============ IFRAME OVERLAY ============
+        const iframeOverlay = document.getElementById('iframe-overlay');
+        const gameFrame = document.getElementById('game-frame');
+        const iframeTitle = document.getElementById('iframe-title');
+        const iframeCloseBtn = document.getElementById('iframe-close-btn');
+        const iframeBlockedMsg = document.getElementById('iframe-blocked-msg');
+
+        // Attach play buttons AFTER password is entered
+        function attachPlayButtons() {
+            document.querySelectorAll('.play-button[data-game-url]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const url = btn.getAttribute('data-game-url');
+                    const title = btn.getAttribute('data-game-title');
+
+                    iframeTitle.textContent = '▶ ' + title;
+                    gameFrame.src = '';
+                    iframeBlockedMsg.classList.remove('show');
+                    gameFrame.style.display = 'block';
+                    iframeOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+
+                    // Small delay then load — detect if iframe was blocked
+                    setTimeout(() => {
+                        gameFrame.src = url;
+                    }, 100);
+
+                    // If frame errors (X-Frame-Options blocked), show message
+                    gameFrame.onerror = () => {
+                        gameFrame.style.display = 'none';
+                        iframeBlockedMsg.classList.add('show');
+                    };
+                });
+            });
+        }
+
+        iframeCloseBtn.addEventListener('click', () => {
+            iframeOverlay.classList.remove('active');
+            gameFrame.src = '';
+            document.body.style.overflow = '';
+        });
+
+        // Attach buttons when gate is cleared
+        const originalTryPassword = tryPassword;
+        gateEnterBtn.addEventListener('click', () => {
+            if (gateInput.value.toUpperCase().trim() === SECRET_CODE) attachPlayButtons();
+        });
+        gateInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && gateInput.value.toUpperCase().trim() === SECRET_CODE) attachPlayButtons();
+        });
+
+        // ============ HACKER TEXT SCRAMBLE ============
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+        document.querySelectorAll(".game-title, h1").forEach(title => {
+            title.addEventListener("mouseover", event => {
+                let iterations = 0;
+                const originalText = event.target.dataset.value;
+                const cleanText = originalText.replace('<br>', ' ');
+                const interval = setInterval(() => {
+                    event.target.innerText = cleanText.split("").map((letter, index) => {
+                        if (index < iterations) return cleanText[index];
+                        return letters[Math.floor(Math.random() * 26)];
+                    }).join("");
+                    if (iterations >= cleanText.length) {
+                        clearInterval(interval);
+                        if (originalText.includes('<br>')) event.target.innerHTML = originalText;
+                    }
+                    iterations += 1/3;
+                }, 30);
+            });
+        });
+
+        // ============ RANDOM GLOBAL GLITCH ============
+        const glitchOverlay = document.getElementById('glitchOverlay');
+        function triggerGlitch() {
+            glitchOverlay.classList.add('glitch-active');
+            setTimeout(() => glitchOverlay.classList.remove('glitch-active'), 300);
+            setTimeout(triggerGlitch, Math.random() * 10000 + 5000);
+        }
+        setTimeout(triggerGlitch, 2000);
+
+        // ============ FLOATING SHAPES ============
+        const shapesContainer = document.getElementById('geoShapes');
+        const shapeTypes = ['square', 'triangle', 'circle'];
+        function createShape() {
+            const shape = document.createElement('div');
+            shape.className = `shape ${shapeTypes[Math.floor(Math.random() * shapeTypes.length)]}`;
+            shape.style.left = Math.random() * 100 + '%';
+            shape.style.animationDuration = (Math.random() * 10 + 15) + 's';
+            shape.style.animationDelay = (Math.random() * 5) + 's';
+            shapesContainer.appendChild(shape);
+            setTimeout(() => shape.remove(), 25000);
+        }
+        setInterval(createShape, 2000);
+
+        // ============ STARS & PARTICLES ============
+        const starsContainer = document.querySelector('.stars');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            star.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            starsContainer.appendChild(star);
+        }
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 15 + 's';
+            particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+            document.body.appendChild(particle);
+        }
+
+        // ============ DATA RAIN ============
+        const dataRainContainer = document.getElementById('dataRain');
+        const chars = '01XYZABCD<>{}[]/\\|+-*';
+        function createDataChar() {
+            const char = document.createElement('div');
+            char.className = 'data-char';
+            char.innerText = chars[Math.floor(Math.random() * chars.length)];
+            char.style.left = Math.random() * 100 + '%';
+            char.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            char.style.fontSize = (Math.random() * 10 + 10) + 'px';
+            if (Math.random() > 0.8) { char.style.color = '#00ffff'; char.style.textShadow = '0 0 5px #00ffff'; }
+            dataRainContainer.appendChild(char);
+            setTimeout(() => char.remove(), 5000);
+        }
+        setInterval(createDataChar, 50);
+    </script>
+</body>
+</html>
